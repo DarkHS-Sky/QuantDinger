@@ -124,25 +124,80 @@ QuantDinger’s agents don’t start from scratch every time. The backend includ
 - **Where it lives**: Local SQLite files under `backend_api_python/data/memory/` (privacy-first).
 
 ```mermaid
-flowchart TD
-  A[POST /api/analysis/multi] --> B[AnalysisService]
-  B --> C[AgentCoordinator]
-  C --> D[Build context: price/kline/news/indicators]
+flowchart TB
+    %% ===== 🌐 Entry Layer =====
+    subgraph Entry["🌐 API Entry"]
+        A["📡 POST /api/analysis/multi"]
+        A2["🔄 POST /api/analysis/reflect"]
+    end
 
-  subgraph Agents[Agents]
-    E[Analysts + Researchers + Trader]
-  end
+    %% ===== ⚙️ Service Layer =====
+    subgraph Service["⚙️ Service Orchestration"]
+        B[AnalysisService]
+        C[AgentCoordinator]
+        D["📊 Build Context<br/>price · kline · news · indicators"]
+    end
 
-  C --> E
-  E -->|get_memories()| M[(SQLite: role_memory.db)]
-  M -->|Top-K memories| E
-  E -->|memory_prompt injected into system prompt| LLM[LLMService (OpenRouter)]
+    %% ===== 🤖 Multi-Agent Workflow =====
+    subgraph Agents["🤖 Multi-Agent Workflow"]
 
-  C --> R[ReflectionService.record_analysis]
-  R --> RR[(SQLite: reflection_records.db)]
-  W[ReflectionWorker (optional)] --> RR
-  W -->|auto-verify + learn| M
-  A2[POST /api/analysis/reflect] -->|manual learn| M
+        subgraph P1["📈 Phase 1 · Analysis (Parallel)"]
+            E1["🔍 MarketAnalyst<br/><i>Technical</i>"]
+            E2["📑 FundamentalAnalyst<br/><i>Fundamentals</i>"]
+            E3["📰 NewsAnalyst<br/><i>News & Events</i>"]
+            E4["💭 SentimentAnalyst<br/><i>Market Mood</i>"]
+            E5["⚠️ RiskAnalyst<br/><i>Risk Assessment</i>"]
+        end
+
+        subgraph P2["🎯 Phase 2 · Debate (Parallel)"]
+            F1["🐂 BullResearcher<br/><i>Bullish Case</i>"]
+            F2["🐻 BearResearcher<br/><i>Bearish Case</i>"]
+        end
+
+        subgraph P3["💹 Phase 3 · Decision"]
+            G["🎰 TraderAgent<br/><i>Final Verdict → BUY / SELL / HOLD</i>"]
+        end
+
+    end
+
+    %% ===== 🧠 Memory Layer =====
+    subgraph Memory["🧠 Local SQLite Memory (data/memory/)"]
+        M1[("market_analyst")]
+        M2[("fundamental")]
+        M3[("news_analyst")]
+        M4[("sentiment")]
+        M5[("risk_analyst")]
+        M6[("bull_researcher")]
+        M7[("bear_researcher")]
+        M8[("trader_agent")]
+    end
+
+    %% ===== 🔄 Reflection Loop =====
+    subgraph Reflect["🔄 Reflection Loop (Optional)"]
+        R[ReflectionService]
+        RR[("reflection_records.db")]
+        W["⏰ ReflectionWorker"]
+    end
+
+    %% ===== Main Flow =====
+    A --> B --> C --> D
+    D --> P1 --> P2 --> P3
+
+    %% ===== Memory Read/Write =====
+    E1 <-.-> M1
+    E2 <-.-> M2
+    E3 <-.-> M3
+    E4 <-.-> M4
+    E5 <-.-> M5
+    F1 <-.-> M6
+    F2 <-.-> M7
+    G <-.-> M8
+
+    %% ===== Reflection Flow =====
+    C --> R --> RR
+    W --> RR
+    W -.->|"verify + learn"| M8
+    A2 -.->|"manual review"| M8
 ```
 
 **Retrieval ranking (simplified)**:

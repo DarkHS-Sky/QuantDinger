@@ -126,50 +126,80 @@ QuantDinger 的多智能體不是「每次從零開始」。後端內建**本地
 #### 邏輯圖（從請求到記憶閉環）
 
 ```mermaid
-flowchart TD
-  A[POST /api/analysis/multi] --> B[AnalysisService]
-  B --> C[AgentCoordinator]
+flowchart TB
+    %% ===== 🌐 入口層 =====
+    subgraph Entry["🌐 API 入口"]
+        A["📡 POST /api/analysis/multi"]
+        A2["🔄 POST /api/analysis/reflect"]
+    end
 
-  C --> D[建構上下文: price/kline/news/indicators]
+    %% ===== ⚙️ 服務編排層 =====
+    subgraph Service["⚙️ 服務編排"]
+        B[AnalysisService]
+        C[AgentCoordinator]
+        D["📊 建構上下文<br/>price · kline · news · indicators"]
+    end
 
-  subgraph Agents[多智能體並行/串行工作流]
-    E1[MarketAnalyst]
-    E2[FundamentalAnalyst]
-    E3[NewsAnalyst]
-    E4[SentimentAnalyst]
-    E5[RiskAnalyst]
-    F1[BullResearcher]
-    F2[BearResearcher]
-    G[TraderAgent]
-  end
+    %% ===== 🤖 多智能體工作流 =====
+    subgraph Agents["🤖 多智能體工作流"]
 
-  C -->|Phase 1 並行| E1
-  C -->|Phase 1 並行| E2
-  C -->|Phase 1 並行| E3
-  C -->|Phase 1 並行| E4
-  C -->|Phase 1 並行| E5
-  C -->|Phase 2 並行| F1
-  C -->|Phase 2 並行| F2
-  C -->|Phase 3| G
+        subgraph P1["📈 Phase 1 · 多維分析（並行）"]
+            E1["🔍 MarketAnalyst<br/><i>技術面分析</i>"]
+            E2["📑 FundamentalAnalyst<br/><i>基本面分析</i>"]
+            E3["📰 NewsAnalyst<br/><i>新聞輿情</i>"]
+            E4["💭 SentimentAnalyst<br/><i>市場情緒</i>"]
+            E5["⚠️ RiskAnalyst<br/><i>風險評估</i>"]
+        end
 
-  subgraph MemDB[本地 SQLite 記憶庫（按角色拆分）]
-    M1[(data/memory/*_memory.db)]
-  end
+        subgraph P2["🎯 Phase 2 · 多空博弈（並行）"]
+            F1["🐂 BullResearcher<br/><i>看多論據</i>"]
+            F2["🐻 BearResearcher<br/><i>看空論據</i>"]
+        end
 
-  E1 <-->|get_memories / add_memory| M1
-  E2 <-->|get_memories / add_memory| M1
-  E3 <-->|get_memories / add_memory| M1
-  E4 <-->|get_memories / add_memory| M1
-  E5 <-->|get_memories / add_memory| M1
-  F1 <-->|get_memories / add_memory| M1
-  F2 <-->|get_memories / add_memory| M1
-  G  <-->|get_memories / add_memory| M1
+        subgraph P3["💹 Phase 3 · 交易決策"]
+            G["🎰 TraderAgent<br/><i>綜合研判 → BUY / SELL / HOLD</i>"]
+        end
 
-  C --> R[ReflectionService.record_analysis]
-  R --> RR[(data/memory/reflection_records.db)]
-  W[ReflectionWorker（可選，定時）] --> RR
-  W -->|到期驗證 + 寫回經驗| M1
-  A2[POST /api/analysis/reflect（手動復盤）] -->|reflect_and_learn| M1
+    end
+
+    %% ===== 🧠 記憶層 =====
+    subgraph Memory["🧠 本地記憶庫 SQLite（data/memory/）"]
+        M1[("market_analyst")]
+        M2[("fundamental")]
+        M3[("news_analyst")]
+        M4[("sentiment")]
+        M5[("risk_analyst")]
+        M6[("bull_researcher")]
+        M7[("bear_researcher")]
+        M8[("trader_agent")]
+    end
+
+    %% ===== 🔄 反思閉環 =====
+    subgraph Reflect["🔄 反思閉環（可選）"]
+        R[ReflectionService]
+        RR[("reflection_records.db")]
+        W["⏰ ReflectionWorker"]
+    end
+
+    %% ===== 主流程 =====
+    A --> B --> C --> D
+    D --> P1 --> P2 --> P3
+
+    %% ===== 記憶讀寫 =====
+    E1 <-.-> M1
+    E2 <-.-> M2
+    E3 <-.-> M3
+    E4 <-.-> M4
+    E5 <-.-> M5
+    F1 <-.-> M6
+    F2 <-.-> M7
+    G <-.-> M8
+
+    %% ===== 反思流程 =====
+    C --> R --> RR
+    W --> RR
+    W -.->|"驗證 + 學習"| M8
+    A2 -.->|"手動復盤"| M8
 ```
 
 #### 檢索排序（簡化）

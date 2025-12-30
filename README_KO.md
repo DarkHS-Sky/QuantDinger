@@ -126,22 +126,80 @@ QuantDinger의 에이전트는 매번 “처음부터” 시작하지 않습니�
 #### 흐름도(요청 → 메모리 폐루프)
 
 ```mermaid
-flowchart TD
-  A[POST /api/analysis/multi] --> B[AnalysisService]
-  B --> C[AgentCoordinator]
-  C --> D[컨텍스트 구성: price/kline/news/indicators]
+flowchart TB
+    %% ===== 🌐 진입 레이어 =====
+    subgraph Entry["🌐 API 진입점"]
+        A["📡 POST /api/analysis/multi"]
+        A2["🔄 POST /api/analysis/reflect"]
+    end
 
-  subgraph Agents[Agents]
-    E[Analysts + Researchers + Trader]
-  end
+    %% ===== ⚙️ 서비스 레이어 =====
+    subgraph Service["⚙️ 서비스 오케스트레이션"]
+        B[AnalysisService]
+        C[AgentCoordinator]
+        D["📊 컨텍스트 구성<br/>price · kline · news · indicators"]
+    end
 
-  C --> E
-  E -->|get_memories / add_memory| M[(SQLite: data/memory/*_memory.db)]
-  C --> R[ReflectionService.record_analysis]
-  R --> RR[(SQLite: data/memory/reflection_records.db)]
-  W[ReflectionWorker(옵션)] --> RR
-  W -->|만기 검증 + 학습 반영| M
-  A2[POST /api/analysis/reflect] -->|수동 학습| M
+    %% ===== 🤖 멀티에이전트 워크플로우 =====
+    subgraph Agents["🤖 멀티에이전트 워크플로우"]
+
+        subgraph P1["📈 Phase 1 · 다차원 분석（병렬）"]
+            E1["🔍 MarketAnalyst<br/><i>기술적 분석</i>"]
+            E2["📑 FundamentalAnalyst<br/><i>펀더멘털</i>"]
+            E3["📰 NewsAnalyst<br/><i>뉴스</i>"]
+            E4["💭 SentimentAnalyst<br/><i>심리</i>"]
+            E5["⚠️ RiskAnalyst<br/><i>리스크 평가</i>"]
+        end
+
+        subgraph P2["🎯 Phase 2 · 강세/약세 논쟁（병렬）"]
+            F1["🐂 BullResearcher<br/><i>강세 논거</i>"]
+            F2["🐻 BearResearcher<br/><i>약세 논거</i>"]
+        end
+
+        subgraph P3["💹 Phase 3 · 거래 결정"]
+            G["🎰 TraderAgent<br/><i>종합 판단 → BUY / SELL / HOLD</i>"]
+        end
+
+    end
+
+    %% ===== 🧠 메모리 레이어 =====
+    subgraph Memory["🧠 로컬 SQLite 메모리（data/memory/）"]
+        M1[("market_analyst")]
+        M2[("fundamental")]
+        M3[("news_analyst")]
+        M4[("sentiment")]
+        M5[("risk_analyst")]
+        M6[("bull_researcher")]
+        M7[("bear_researcher")]
+        M8[("trader_agent")]
+    end
+
+    %% ===== 🔄 리플렉션 루프 =====
+    subgraph Reflect["🔄 리플렉션 루프（옵션）"]
+        R[ReflectionService]
+        RR[("reflection_records.db")]
+        W["⏰ ReflectionWorker"]
+    end
+
+    %% ===== 메인 흐름 =====
+    A --> B --> C --> D
+    D --> P1 --> P2 --> P3
+
+    %% ===== 메모리 읽기/쓰기 =====
+    E1 <-.-> M1
+    E2 <-.-> M2
+    E3 <-.-> M3
+    E4 <-.-> M4
+    E5 <-.-> M5
+    F1 <-.-> M6
+    F2 <-.-> M7
+    G <-.-> M8
+
+    %% ===== 리플렉션 흐름 =====
+    C --> R --> RR
+    W --> RR
+    W -.->|"검증 + 학습"| M8
+    A2 -.->|"수동 회고"| M8
 ```
 
 #### 검색 랭킹(간략)

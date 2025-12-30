@@ -126,22 +126,80 @@ QuantDinger のエージェントは毎回「ゼロから」ではありませ�
 #### フロー図（リクエスト → 記憶閉ループ）
 
 ```mermaid
-flowchart TD
-  A[POST /api/analysis/multi] --> B[AnalysisService]
-  B --> C[AgentCoordinator]
-  C --> D[コンテキスト構築: price/kline/news/indicators]
+flowchart TB
+    %% ===== 🌐 入口層 =====
+    subgraph Entry["🌐 API エントリー"]
+        A["📡 POST /api/analysis/multi"]
+        A2["🔄 POST /api/analysis/reflect"]
+    end
 
-  subgraph Agents[Agents]
-    E[Analysts + Researchers + Trader]
-  end
+    %% ===== ⚙️ サービス層 =====
+    subgraph Service["⚙️ サービス編成"]
+        B[AnalysisService]
+        C[AgentCoordinator]
+        D["📊 コンテキスト構築<br/>price · kline · news · indicators"]
+    end
 
-  C --> E
-  E -->|get_memories / add_memory| M[(SQLite: data/memory/*_memory.db)]
-  C --> R[ReflectionService.record_analysis]
-  R --> RR[(SQLite: data/memory/reflection_records.db)]
-  W[ReflectionWorker（任意）] --> RR
-  W -->|期限到来を検証し学習| M
-  A2[POST /api/analysis/reflect] -->|手動で学習| M
+    %% ===== 🤖 マルチエージェントワークフロー =====
+    subgraph Agents["🤖 マルチエージェントワークフロー"]
+
+        subgraph P1["📈 Phase 1 · 多次元分析（並列）"]
+            E1["🔍 MarketAnalyst<br/><i>テクニカル</i>"]
+            E2["📑 FundamentalAnalyst<br/><i>ファンダメンタル</i>"]
+            E3["📰 NewsAnalyst<br/><i>ニュース</i>"]
+            E4["💭 SentimentAnalyst<br/><i>センチメント</i>"]
+            E5["⚠️ RiskAnalyst<br/><i>リスク評価</i>"]
+        end
+
+        subgraph P2["🎯 Phase 2 · 強気弱気論争（並列）"]
+            F1["🐂 BullResearcher<br/><i>強気の論点</i>"]
+            F2["🐻 BearResearcher<br/><i>弱気の論点</i>"]
+        end
+
+        subgraph P3["💹 Phase 3 · 取引判断"]
+            G["🎰 TraderAgent<br/><i>総合判定 → BUY / SELL / HOLD</i>"]
+        end
+
+    end
+
+    %% ===== 🧠 記憶層 =====
+    subgraph Memory["🧠 ローカル SQLite 記憶庫（data/memory/）"]
+        M1[("market_analyst")]
+        M2[("fundamental")]
+        M3[("news_analyst")]
+        M4[("sentiment")]
+        M5[("risk_analyst")]
+        M6[("bull_researcher")]
+        M7[("bear_researcher")]
+        M8[("trader_agent")]
+    end
+
+    %% ===== 🔄 反省ループ =====
+    subgraph Reflect["🔄 反省ループ（オプション）"]
+        R[ReflectionService]
+        RR[("reflection_records.db")]
+        W["⏰ ReflectionWorker"]
+    end
+
+    %% ===== メインフロー =====
+    A --> B --> C --> D
+    D --> P1 --> P2 --> P3
+
+    %% ===== 記憶読み書き =====
+    E1 <-.-> M1
+    E2 <-.-> M2
+    E3 <-.-> M3
+    E4 <-.-> M4
+    E5 <-.-> M5
+    F1 <-.-> M6
+    F2 <-.-> M7
+    G <-.-> M8
+
+    %% ===== 反省フロー =====
+    C --> R --> RR
+    W --> RR
+    W -.->|"検証 + 学習"| M8
+    A2 -.->|"手動復習"| M8
 ```
 
 #### 検索ランキング（簡略）

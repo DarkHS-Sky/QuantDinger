@@ -126,57 +126,80 @@ QuantDinger 的多智能体不是“每次从零开始”。它内置了一个**
 #### 逻辑图（从请求到记忆闭环）
 
 ```mermaid
-flowchart TD
-  A[POST /api/analysis/multi] --> B[AnalysisService]
-  B --> C[AgentCoordinator]
+flowchart TB
+    %% ===== 🌐 入口层 =====
+    subgraph Entry["🌐 API 入口"]
+        A["📡 POST /api/analysis/multi"]
+        A2["🔄 POST /api/analysis/reflect"]
+    end
 
-  C --> D[构建上下文: price/kline/news/indicators]
+    %% ===== ⚙️ 服务编排层 =====
+    subgraph Service["⚙️ 服务编排"]
+        B[AnalysisService]
+        C[AgentCoordinator]
+        D["📊 构建上下文<br/>price · kline · news · indicators"]
+    end
 
-  subgraph Agents[多智能体并行/串行工作流]
-    E1[MarketAnalyst]
-    E2[FundamentalAnalyst]
-    E3[NewsAnalyst]
-    E4[SentimentAnalyst]
-    E5[RiskAnalyst]
-    F1[BullResearcher]
-    F2[BearResearcher]
-    G[TraderAgent]
-  end
+    %% ===== 🤖 多智能体工作流 =====
+    subgraph Agents["🤖 多智能体工作流"]
 
-  C -->|Phase 1 并行| E1
-  C -->|Phase 1 并行| E2
-  C -->|Phase 1 并行| E3
-  C -->|Phase 1 并行| E4
-  C -->|Phase 1 并行| E5
-  C -->|Phase 2 并行| F1
-  C -->|Phase 2 并行| F2
-  C -->|Phase 3| G
+        subgraph P1["📈 Phase 1 · 多维分析（并行）"]
+            E1["🔍 MarketAnalyst<br/><i>技术面分析</i>"]
+            E2["📑 FundamentalAnalyst<br/><i>基本面分析</i>"]
+            E3["📰 NewsAnalyst<br/><i>新闻舆情</i>"]
+            E4["💭 SentimentAnalyst<br/><i>市场情绪</i>"]
+            E5["⚠️ RiskAnalyst<br/><i>风险评估</i>"]
+        end
 
-  subgraph MemDB[本地 SQLite 记忆库（按角色拆分）]
-    M1[(data/memory/market_analyst_memory.db)]
-    M2[(data/memory/fundamental_analyst_memory.db)]
-    M3[(data/memory/news_analyst_memory.db)]
-    M4[(data/memory/sentiment_analyst_memory.db)]
-    M5[(data/memory/risk_analyst_memory.db)]
-    M6[(data/memory/bull_researcher_memory.db)]
-    M7[(data/memory/bear_researcher_memory.db)]
-    M8[(data/memory/trader_agent_memory.db)]
-  end
+        subgraph P2["🎯 Phase 2 · 多空博弈（并行）"]
+            F1["🐂 BullResearcher<br/><i>看多论据</i>"]
+            F2["🐻 BearResearcher<br/><i>看空论据</i>"]
+        end
 
-  E1 <-->|get_memories / add_memory| M1
-  E2 <-->|get_memories / add_memory| M2
-  E3 <-->|get_memories / add_memory| M3
-  E4 <-->|get_memories / add_memory| M4
-  E5 <-->|get_memories / add_memory| M5
-  F1 <-->|get_memories / add_memory| M6
-  F2 <-->|get_memories / add_memory| M7
-  G  <-->|get_memories / add_memory| M8
+        subgraph P3["💹 Phase 3 · 交易决策"]
+            G["🎰 TraderAgent<br/><i>综合研判 → BUY / SELL / HOLD</i>"]
+        end
 
-  C --> R[ReflectionService.record_analysis]
-  R --> RR[(data/memory/reflection_records.db)]
-  W[ReflectionWorker（可选，定时）] --> RR
-  W -->|到期验证 + 写回经验| M8
-  A2[POST /api/analysis/reflect（手动复盘）] -->|reflect_and_learn| M8
+    end
+
+    %% ===== 🧠 记忆层 =====
+    subgraph Memory["🧠 本地记忆库 SQLite（data/memory/）"]
+        M1[("market_analyst")]
+        M2[("fundamental")]
+        M3[("news_analyst")]
+        M4[("sentiment")]
+        M5[("risk_analyst")]
+        M6[("bull_researcher")]
+        M7[("bear_researcher")]
+        M8[("trader_agent")]
+    end
+
+    %% ===== 🔄 反思闭环 =====
+    subgraph Reflect["🔄 反思闭环（可选）"]
+        R[ReflectionService]
+        RR[("reflection_records.db")]
+        W["⏰ ReflectionWorker"]
+    end
+
+    %% ===== 主流程 =====
+    A --> B --> C --> D
+    D --> P1 --> P2 --> P3
+
+    %% ===== 记忆读写 =====
+    E1 <-.-> M1
+    E2 <-.-> M2
+    E3 <-.-> M3
+    E4 <-.-> M4
+    E5 <-.-> M5
+    F1 <-.-> M6
+    F2 <-.-> M7
+    G <-.-> M8
+
+    %% ===== 反思流程 =====
+    C --> R --> RR
+    W --> RR
+    W -.->|"验证 + 学习"| M8
+    A2 -.->|"手动复盘"| M8
 ```
 
 #### 1) 记忆是如何“注入提示词”的？
