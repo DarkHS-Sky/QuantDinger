@@ -28,6 +28,7 @@
   <p align="center">
   <a href="https://www.quantdinger.com"><strong>공식 커뮤니티</strong></a> ·
   <a href="https://ai.quantdinger.com"><strong>라이브 데모</strong></a> ·
+  <a href="https://youtu.be/HPTVpqL7knM"><strong>📺 동영상 데모</strong></a> ·
   <a href="CONTRIBUTORS.md"><strong>🌟 참여하기</strong></a>
   </p>
 
@@ -74,6 +75,23 @@
 - **🧠 AI 강화**: 단순한 코드 완성이 아닌, OpenRouter/LLM으로 구동되는 진정한 AI 리서치 애널리스트입니다.
 - **⚡ 멀티 마켓**: **암호화폐**, **미국 주식**, **중국/홍콩 주식**, **외환** 및 **선물**을 기본 지원합니다.
 - **🔌 즉시 사용 가능**: Docker를 통한 원클릭 배포. 복잡한 환경 설정이 필요 없습니다.
+
+---
+
+## 📺 동영상 데모
+
+<div align="center">
+  <a href="https://youtu.be/HPTVpqL7knM">
+    <img src="https://img.youtube.com/vi/HPTVpqL7knM/maxresdefault.jpg" alt="QuantDinger 프로젝트 소개 동영상" width="100%" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 800px;">
+    <div style="position: relative; display: inline-block; margin-top: -100px;">
+      <svg width="100" height="100" viewBox="0 0 100 100" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">
+        <circle cx="50" cy="50" r="45" fill="red" opacity="0.9"/>
+        <polygon points="40,30 40,70 70,50" fill="white"/>
+      </svg>
+    </div>
+  </a>
+  <p><strong>위 동영상을 클릭하여 QuantDinger 프로젝트 소개를 시청하세요</strong></p>
+</div>
 
 ---
 
@@ -449,6 +467,7 @@ npm run serve
 - **🌟 기여하고 싶으신가요？**: [기여자 프로그램 참여](CONTRIBUTORS.md) - 초기 기여자는 QDT 거버넌스 토큰을 받습니다！
 - **Telegram (Group)**: [Join QuantDinger Telegram Group](https://t.me/quantdinger)
 - **Discord**: [서버 참여](https://discord.gg/vwJ8zxFh9Q)
+- **📺 동영상 데모**: [프로젝트 소개 동영상 보기](https://youtu.be/HPTVpqL7knM)
 - **YouTube**: [@quantdinger](https://youtube.com/@quantdinger)
 - **Email**: [brokermr810@gmail.com](mailto:brokermr810@gmail.com)
 - **GitHub Issues**: [버그 신고 / 기능 요청](https://github.com/brokermr810/QuantDinger/issues)

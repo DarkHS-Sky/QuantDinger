@@ -28,6 +28,7 @@
   <p align="center">
   <a href="https://www.quantdinger.com"><strong>Official Community</strong></a> ·
   <a href="https://ai.quantdinger.com"><strong>Live Demo</strong></a> ·
+  <a href="https://youtu.be/HPTVpqL7knM"><strong>📺 Video Demo</strong></a> ·
   <a href="CONTRIBUTORS.md"><strong>🌟 Join Us</strong></a>
   </p>
 
@@ -74,6 +75,23 @@ Unlike expensive SaaS platforms, QuantDinger returns **data ownership** to you. 
 - **🧠 AI Empowered**: Not just code completion, but a real AI Research Analyst (powered by OpenRouter/LLM).
 - **⚡ Multi-Market**: Native support for **Crypto**, **US Stocks**, **CN/HK Stocks**, **Forex**, and **Futures**.
 - **🔌 Out-of-the-Box**: One-click deployment via Docker. No complex environment setup required.
+
+---
+
+## 📺 Video Demo
+
+<div align="center">
+  <a href="https://youtu.be/HPTVpqL7knM">
+    <img src="https://img.youtube.com/vi/HPTVpqL7knM/maxresdefault.jpg" alt="QuantDinger Project Introduction Video" width="100%" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 800px;">
+    <div style="position: relative; display: inline-block; margin-top: -100px;">
+      <svg width="100" height="100" viewBox="0 0 100 100" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">
+        <circle cx="50" cy="50" r="45" fill="red" opacity="0.9"/>
+        <polygon points="40,30 40,70 70,50" fill="white"/>
+      </svg>
+    </div>
+  </a>
+  <p><strong>Click the video above to watch the QuantDinger project introduction</strong></p>
+</div>
 
 ---
 
@@ -612,6 +630,7 @@ Join our global community for strategy sharing and technical support:
 - **🌟 Want to Contribute?**: [Join as a Contributor](CONTRIBUTORS.md) - Early contributors receive QDT governance tokens!
 - **Telegram (Group)**: [Join QuantDinger Telegram Group](https://t.me/quantdinger)
 - **Discord**: [Join Server](https://discord.gg/vwJ8zxFh9Q)
+- **📺 Video Demo**: [Watch Project Introduction Video](https://youtu.be/HPTVpqL7knM)
 - **YouTube**: [@quantdinger](https://youtube.com/@quantdinger)
 - **Email**: [brokermr810@gmail.com](mailto:brokermr810@gmail.com)
 - **GitHub Issues**: [Report bugs / Request features](https://github.com/brokermr810/QuantDinger/issues)

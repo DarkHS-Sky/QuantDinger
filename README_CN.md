@@ -28,6 +28,7 @@
   <p align="center">
   <a href="https://www.quantdinger.com"><strong>官方社区</strong></a> ·
   <a href="https://ai.quantdinger.com"><strong>在线演示</strong></a> ·
+  <a href="https://youtu.be/HPTVpqL7knM"><strong>📺 视频演示</strong></a> ·
   <a href="CONTRIBUTORS.md"><strong>🌟 加入我们</strong></a>
   </p>
 
@@ -74,6 +75,23 @@
 - **🧠 AI 赋能**：不仅是代码补全，更是真正的 AI 投研分析师（由 OpenRouter/LLM 驱动）。
 - **⚡ 多市场支持**：原生支持 **加密货币**、**美股**、**A股/港股**、**外汇** 和 **期货**。
 - **🔌 开箱即用**：通过 Docker 一键部署。无需复杂的环境配置。
+
+---
+
+## 📺 视频演示
+
+<div align="center">
+  <a href="https://youtu.be/HPTVpqL7knM">
+    <img src="https://img.youtube.com/vi/HPTVpqL7knM/maxresdefault.jpg" alt="QuantDinger 项目介绍视频" width="100%" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 800px;">
+    <div style="position: relative; display: inline-block; margin-top: -100px;">
+      <svg width="100" height="100" viewBox="0 0 100 100" style="filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));">
+        <circle cx="50" cy="50" r="45" fill="red" opacity="0.9"/>
+        <polygon points="40,30 40,70 70,50" fill="white"/>
+      </svg>
+    </div>
+  </a>
+  <p><strong>点击上方视频观看 QuantDinger 项目介绍</strong></p>
+</div>
 
 ---
 
@@ -480,6 +498,7 @@ npm run serve
 - **🌟 想要贡献？**: [加入贡献者计划](CONTRIBUTORS.md) - 早期贡献者将获得 QDT 治理代币！
 - **Telegram (Group)**: [Join QuantDinger Telegram Group](https://t.me/quantdinger)
 - **Discord**: [Join Server](https://discord.gg/vwJ8zxFh9Q)
+- **📺 视频演示**: [观看项目介绍视频](https://youtu.be/HPTVpqL7knM)
 - **YouTube**: [@quantdinger](https://youtube.com/@quantdinger)
 - **Email**: [brokermr810@gmail.com](mailto:brokermr810@gmail.com)
 - **GitHub Issues**: [提交 Bug / 功能请求](https://github.com/brokermr810/QuantDinger/issues)
