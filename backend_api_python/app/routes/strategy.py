@@ -74,6 +74,171 @@ def create_strategy():
         return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
 
 
+@strategy_bp.route('/strategies/batch-create', methods=['POST'])
+def batch_create_strategies():
+    """
+    批量创建策略（多币种）
+    
+    请求体:
+        strategy_name: 策略基础名称
+        symbols: 币种数组，如 ["Crypto:BTC/USDT", "Crypto:ETH/USDT"]
+        ... 其他策略配置
+    """
+    try:
+        payload = request.get_json() or {}
+        payload['user_id'] = int(payload.get('user_id') or 1)
+        payload['strategy_type'] = payload.get('strategy_type') or 'IndicatorStrategy'
+        
+        result = get_strategy_service().batch_create_strategies(payload)
+        
+        if result['success']:
+            return jsonify({
+                'code': 1,
+                'msg': f"成功创建 {result['total_created']} 个策略",
+                'data': result
+            })
+        else:
+            return jsonify({
+                'code': 0,
+                'msg': '批量创建失败',
+                'data': result
+            })
+    except Exception as e:
+        logger.error(f"batch_create_strategies failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
+
+
+@strategy_bp.route('/strategies/batch-start', methods=['POST'])
+def batch_start_strategies():
+    """
+    批量启动策略
+    
+    请求体:
+        strategy_ids: 策略ID数组
+        或
+        strategy_group_id: 策略组ID
+    """
+    try:
+        payload = request.get_json() or {}
+        strategy_ids = payload.get('strategy_ids') or []
+        strategy_group_id = payload.get('strategy_group_id')
+        
+        # 如果提供了策略组ID，获取组内所有策略
+        if strategy_group_id and not strategy_ids:
+            strategy_ids = get_strategy_service().get_strategies_by_group(strategy_group_id)
+        
+        if not strategy_ids:
+            return jsonify({'code': 0, 'msg': '请提供策略ID', 'data': None}), 400
+        
+        # 先更新数据库状态
+        result = get_strategy_service().batch_start_strategies(strategy_ids)
+        
+        # 然后启动执行器
+        executor = get_trading_executor()
+        for sid in result.get('success_ids', []):
+            try:
+                executor.start_strategy(sid)
+            except Exception as e:
+                logger.error(f"Failed to start executor for strategy {sid}: {e}")
+        
+        return jsonify({
+            'code': 1 if result['success'] else 0,
+            'msg': f"成功启动 {len(result.get('success_ids', []))} 个策略",
+            'data': result
+        })
+    except Exception as e:
+        logger.error(f"batch_start_strategies failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
+
+
+@strategy_bp.route('/strategies/batch-stop', methods=['POST'])
+def batch_stop_strategies():
+    """
+    批量停止策略
+    
+    请求体:
+        strategy_ids: 策略ID数组
+        或
+        strategy_group_id: 策略组ID
+    """
+    try:
+        payload = request.get_json() or {}
+        strategy_ids = payload.get('strategy_ids') or []
+        strategy_group_id = payload.get('strategy_group_id')
+        
+        if strategy_group_id and not strategy_ids:
+            strategy_ids = get_strategy_service().get_strategies_by_group(strategy_group_id)
+        
+        if not strategy_ids:
+            return jsonify({'code': 0, 'msg': '请提供策略ID', 'data': None}), 400
+        
+        # 先停止执行器
+        executor = get_trading_executor()
+        for sid in strategy_ids:
+            try:
+                executor.stop_strategy(sid)
+            except Exception as e:
+                logger.error(f"Failed to stop executor for strategy {sid}: {e}")
+        
+        # 然后更新数据库状态
+        result = get_strategy_service().batch_stop_strategies(strategy_ids)
+        
+        return jsonify({
+            'code': 1 if result['success'] else 0,
+            'msg': f"成功停止 {len(result.get('success_ids', []))} 个策略",
+            'data': result
+        })
+    except Exception as e:
+        logger.error(f"batch_stop_strategies failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
+
+
+@strategy_bp.route('/strategies/batch-delete', methods=['DELETE'])
+def batch_delete_strategies():
+    """
+    批量删除策略
+    
+    请求体:
+        strategy_ids: 策略ID数组
+        或
+        strategy_group_id: 策略组ID
+    """
+    try:
+        payload = request.get_json() or {}
+        strategy_ids = payload.get('strategy_ids') or []
+        strategy_group_id = payload.get('strategy_group_id')
+        
+        if strategy_group_id and not strategy_ids:
+            strategy_ids = get_strategy_service().get_strategies_by_group(strategy_group_id)
+        
+        if not strategy_ids:
+            return jsonify({'code': 0, 'msg': '请提供策略ID', 'data': None}), 400
+        
+        # 先停止执行器
+        executor = get_trading_executor()
+        for sid in strategy_ids:
+            try:
+                executor.stop_strategy(sid)
+            except Exception as e:
+                pass  # 忽略停止错误
+        
+        # 然后删除
+        result = get_strategy_service().batch_delete_strategies(strategy_ids)
+        
+        return jsonify({
+            'code': 1 if result['success'] else 0,
+            'msg': f"成功删除 {len(result.get('success_ids', []))} 个策略",
+            'data': result
+        })
+    except Exception as e:
+        logger.error(f"batch_delete_strategies failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'code': 0, 'msg': str(e), 'data': None}), 500
+
+
 @strategy_bp.route('/strategies/update', methods=['PUT'])
 def update_strategy():
     try:

@@ -2,6 +2,7 @@ import os
 import time
 import json
 import threading
+import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
@@ -534,6 +535,10 @@ class StrategyService:
         trading_config = payload.get('trading_config') or {}
         exchange_config = payload.get('exchange_config') or {}
 
+        # 策略组字段
+        strategy_group_id = payload.get('strategy_group_id') or ''
+        group_base_name = payload.get('group_base_name') or ''
+
         # Denormalized fields for quick list rendering
         symbol = (trading_config or {}).get('symbol')
         timeframe = (trading_config or {}).get('timeframe')
@@ -549,8 +554,9 @@ class StrategyService:
                 (strategy_name, strategy_type, market_category, execution_mode, notification_config,
                  status, symbol, timeframe, initial_capital, leverage, market_type,
                  exchange_config, indicator_config, trading_config, ai_model_config, decide_interval,
+                 strategy_group_id, group_base_name,
                  created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     name,
@@ -569,6 +575,8 @@ class StrategyService:
                     self._dump_json_or_encrypt(trading_config, encrypt=False),
                     self._dump_json_or_encrypt(payload.get('ai_model_config') or {}, encrypt=False),
                     int(payload.get('decide_interval') or 300),
+                    strategy_group_id,
+                    group_base_name,
                     now,
                     now
                 )
@@ -577,6 +585,150 @@ class StrategyService:
             db.commit()
             cur.close()
         return int(new_id)
+
+    def batch_create_strategies(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        批量创建策略（多币种）
+        
+        Args:
+            payload: 包含 symbols（数组）和其他策略配置
+            
+        Returns:
+            {
+                'success': True/False,
+                'strategy_group_id': '...',
+                'created_ids': [1, 2, 3],
+                'failed_symbols': []
+            }
+        """
+        symbols = payload.get('symbols') or []
+        if not symbols or not isinstance(symbols, list):
+            raise ValueError("symbols array is required")
+        
+        base_name = (payload.get('strategy_name') or '').strip()
+        if not base_name:
+            raise ValueError("strategy_name is required")
+        
+        # 生成策略组ID
+        strategy_group_id = str(uuid.uuid4())[:8]
+        
+        created_ids = []
+        failed_symbols = []
+        
+        for symbol in symbols:
+            try:
+                # 为每个币种创建单独的策略
+                single_payload = dict(payload)
+                
+                # 解析 symbol（可能是 "Market:SYMBOL" 格式）
+                if isinstance(symbol, str) and ':' in symbol:
+                    parts = symbol.split(':', 1)
+                    market_category = parts[0]
+                    symbol_name = parts[1]
+                else:
+                    market_category = payload.get('market_category') or 'Crypto'
+                    symbol_name = symbol
+                
+                # 策略名称加币种后缀
+                single_payload['strategy_name'] = f"{base_name}-{symbol_name}"
+                single_payload['strategy_group_id'] = strategy_group_id
+                single_payload['group_base_name'] = base_name
+                single_payload['market_category'] = market_category
+                
+                # 更新 trading_config 中的 symbol
+                trading_config = dict(single_payload.get('trading_config') or {})
+                trading_config['symbol'] = symbol_name
+                single_payload['trading_config'] = trading_config
+                
+                new_id = self.create_strategy(single_payload)
+                created_ids.append(new_id)
+                
+            except Exception as e:
+                logger.error(f"Failed to create strategy for symbol {symbol}: {e}")
+                failed_symbols.append({'symbol': symbol, 'error': str(e)})
+        
+        return {
+            'success': len(created_ids) > 0,
+            'strategy_group_id': strategy_group_id,
+            'group_base_name': base_name,
+            'created_ids': created_ids,
+            'failed_symbols': failed_symbols,
+            'total_created': len(created_ids),
+            'total_failed': len(failed_symbols)
+        }
+
+    def batch_start_strategies(self, strategy_ids: List[int]) -> Dict[str, Any]:
+        """批量启动策略"""
+        success_ids = []
+        failed_ids = []
+        
+        for sid in strategy_ids:
+            try:
+                self.update_strategy_status(sid, 'running')
+                success_ids.append(sid)
+            except Exception as e:
+                logger.error(f"Failed to start strategy {sid}: {e}")
+                failed_ids.append({'id': sid, 'error': str(e)})
+        
+        return {
+            'success': len(success_ids) > 0,
+            'success_ids': success_ids,
+            'failed_ids': failed_ids
+        }
+
+    def batch_stop_strategies(self, strategy_ids: List[int]) -> Dict[str, Any]:
+        """批量停止策略"""
+        success_ids = []
+        failed_ids = []
+        
+        for sid in strategy_ids:
+            try:
+                self.update_strategy_status(sid, 'stopped')
+                success_ids.append(sid)
+            except Exception as e:
+                logger.error(f"Failed to stop strategy {sid}: {e}")
+                failed_ids.append({'id': sid, 'error': str(e)})
+        
+        return {
+            'success': len(success_ids) > 0,
+            'success_ids': success_ids,
+            'failed_ids': failed_ids
+        }
+
+    def batch_delete_strategies(self, strategy_ids: List[int]) -> Dict[str, Any]:
+        """批量删除策略"""
+        success_ids = []
+        failed_ids = []
+        
+        for sid in strategy_ids:
+            try:
+                self.delete_strategy(sid)
+                success_ids.append(sid)
+            except Exception as e:
+                logger.error(f"Failed to delete strategy {sid}: {e}")
+                failed_ids.append({'id': sid, 'error': str(e)})
+        
+        return {
+            'success': len(success_ids) > 0,
+            'success_ids': success_ids,
+            'failed_ids': failed_ids
+        }
+
+    def get_strategies_by_group(self, strategy_group_id: str) -> List[Dict[str, Any]]:
+        """获取策略组内的所有策略"""
+        try:
+            with get_db_connection() as db:
+                cur = db.cursor()
+                cur.execute(
+                    "SELECT id FROM qd_strategies_trading WHERE strategy_group_id = ?",
+                    (strategy_group_id,)
+                )
+                rows = cur.fetchall() or []
+                cur.close()
+            return [row['id'] for row in rows]
+        except Exception as e:
+            logger.error(f"get_strategies_by_group failed: {e}")
+            return []
 
     def update_strategy(self, strategy_id: int, payload: Dict[str, Any]) -> bool:
         now = int(time.time())

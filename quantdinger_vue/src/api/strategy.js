@@ -5,10 +5,14 @@ const api = {
   strategies: '/api/strategies',
   strategyDetail: '/api/strategies/detail',
   createStrategy: '/api/strategies/create',
+  batchCreateStrategies: '/api/strategies/batch-create',
   updateStrategy: '/api/strategies/update',
   stopStrategy: '/api/strategies/stop',
   startStrategy: '/api/strategies/start',
   deleteStrategy: '/api/strategies/delete',
+  batchStartStrategies: '/api/strategies/batch-start',
+  batchStopStrategies: '/api/strategies/batch-stop',
+  batchDeleteStrategies: '/api/strategies/batch-delete',
   testConnection: '/api/strategies/test-connection',
   trades: '/api/strategies/trades',
   positions: '/api/strategies/positions',
@@ -54,6 +58,20 @@ export function getStrategyDetail (id) {
 export function createStrategy (data) {
   return request({
     url: api.createStrategy,
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 批量创建策略（多币种）
+ * @param {Object} data - 策略数据
+ * @param {string} data.strategy_name - 策略基础名称
+ * @param {Array} data.symbols - 币种数组，如 ["Crypto:BTC/USDT", "Crypto:ETH/USDT"]
+ */
+export function batchCreateStrategies (data) {
+  return request({
+    url: api.batchCreateStrategies,
     method: 'post',
     data
   })
@@ -110,6 +128,48 @@ export function deleteStrategy (id) {
     url: api.deleteStrategy,
     method: 'delete',
     params: { id }
+  })
+}
+
+/**
+ * 批量启动策略
+ * @param {Object} data
+ * @param {Array} data.strategy_ids - 策略ID数组
+ * @param {string} data.strategy_group_id - 策略组ID（可选，与strategy_ids二选一）
+ */
+export function batchStartStrategies (data) {
+  return request({
+    url: api.batchStartStrategies,
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 批量停止策略
+ * @param {Object} data
+ * @param {Array} data.strategy_ids - 策略ID数组
+ * @param {string} data.strategy_group_id - 策略组ID（可选，与strategy_ids二选一）
+ */
+export function batchStopStrategies (data) {
+  return request({
+    url: api.batchStopStrategies,
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 批量删除策略
+ * @param {Object} data
+ * @param {Array} data.strategy_ids - 策略ID数组
+ * @param {string} data.strategy_group_id - 策略组ID（可选，与strategy_ids二选一）
+ */
+export function batchDeleteStrategies (data) {
+  return request({
+    url: api.batchDeleteStrategies,
+    method: 'delete',
+    data
   })
 }
 

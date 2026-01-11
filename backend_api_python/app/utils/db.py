@@ -104,7 +104,9 @@ def _init_db_schema(conn):
     ensure_columns("qd_strategies_trading", {
         "market_category": "TEXT DEFAULT 'Crypto'",
         "execution_mode": "TEXT DEFAULT 'signal'",
-        "notification_config": "TEXT DEFAULT ''"
+        "notification_config": "TEXT DEFAULT ''",
+        "strategy_group_id": "TEXT DEFAULT ''",  # 策略组ID，批量创建的策略共享同一个组ID
+        "group_base_name": "TEXT DEFAULT ''"     # 策略组基础名称（用于显示）
     })
 
     # 2. 持仓表

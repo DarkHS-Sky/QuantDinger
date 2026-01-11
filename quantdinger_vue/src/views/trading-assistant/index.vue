@@ -20,69 +20,153 @@
 
           <a-spin :spinning="loading">
             <a-empty v-if="!loading && strategies.length === 0" :description="$t('trading-assistant.noStrategy')" />
-            <a-list
-              v-else
-              :data-source="strategies"
-              size="small"
-            >
-              <a-list-item
-                slot="renderItem"
-                slot-scope="item"
+            <div v-else class="strategy-grouped-list">
+              <!-- 策略组列表 -->
+              <div
+                v-for="group in groupedStrategies.groups"
+                :key="group.id"
+                class="strategy-group"
+              >
+                <!-- 策略组头部 -->
+                <div class="strategy-group-header" @click="toggleGroup(group.id)">
+                  <div class="group-header-left">
+                    <a-icon :type="collapsedGroups[group.id] ? 'right' : 'down'" class="collapse-icon" />
+                    <a-icon type="folder" class="group-icon" />
+                    <span class="group-name">{{ group.baseName }}</span>
+                    <a-tag size="small" color="blue">{{ group.strategies.length }} {{ $t('trading-assistant.symbolCount') }}</a-tag>
+                  </div>
+                  <div class="group-header-right" @click.stop>
+                    <span v-if="group.runningCount > 0" class="group-status running">
+                      {{ group.runningCount }} {{ $t('trading-assistant.status.running') }}
+                    </span>
+                    <span v-if="group.stoppedCount > 0" class="group-status stopped">
+                      {{ group.stoppedCount }} {{ $t('trading-assistant.status.stopped') }}
+                    </span>
+                    <a-dropdown :getPopupContainer="getDropdownContainer" :trigger="['click']">
+                      <a-menu slot="overlay" @click="({ key }) => handleGroupMenuClick(key, group)">
+                        <a-menu-item key="startAll">
+                          <a-icon type="play-circle" />
+                          {{ $t('trading-assistant.startAll') }}
+                        </a-menu-item>
+                        <a-menu-item key="stopAll">
+                          <a-icon type="pause-circle" />
+                          {{ $t('trading-assistant.stopAll') }}
+                        </a-menu-item>
+                        <a-menu-divider />
+                        <a-menu-item key="deleteAll" class="danger-item">
+                          <a-icon type="delete" />
+                          {{ $t('trading-assistant.deleteAll') }}
+                        </a-menu-item>
+                      </a-menu>
+                      <a-button type="link" icon="more" size="small" />
+                    </a-dropdown>
+                  </div>
+                </div>
+                <!-- 策略组内的策略列表（可折叠） -->
+                <div v-show="!collapsedGroups[group.id]" class="strategy-group-content">
+                  <div
+                    v-for="item in group.strategies"
+                    :key="item.id"
+                    :class="['strategy-list-item', { active: selectedStrategy && selectedStrategy.id === item.id }]"
+                    @click="handleSelectStrategy(item)"
+                  >
+                    <div class="strategy-item-content">
+                      <div class="strategy-item-header">
+                        <div class="strategy-name-wrapper">
+                          <span class="info-item" v-if="item.trading_config && item.trading_config.symbol">
+                            <a-icon type="dollar" />
+                            {{ item.trading_config.symbol }}
+                          </span>
+                          <span
+                            class="status-label"
+                            :class="[
+                              item.status ? `status-${item.status}` : '',
+                              { 'status-stopped': item.status === 'stopped' }
+                            ]"
+                          >
+                            {{ getStatusText(item.status) }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="strategy-item-actions" @click.stop>
+                      <a-dropdown :getPopupContainer="getDropdownContainer" :trigger="['click']">
+                        <a-menu slot="overlay" @click="({ key }) => handleMenuClick(key, item)">
+                          <a-menu-item v-if="item.status === 'stopped'" key="start">
+                            <a-icon type="play-circle" />
+                            {{ $t('trading-assistant.startStrategy') }}
+                          </a-menu-item>
+                          <a-menu-item v-if="item.status === 'running'" key="stop">
+                            <a-icon type="pause-circle" />
+                            {{ $t('trading-assistant.stopStrategy') }}
+                          </a-menu-item>
+                          <a-menu-divider />
+                          <a-menu-item key="edit">
+                            <a-icon type="edit" />
+                            {{ $t('trading-assistant.editStrategy') }}
+                          </a-menu-item>
+                          <a-menu-divider />
+                          <a-menu-item key="delete" class="danger-item">
+                            <a-icon type="delete" />
+                            {{ $t('trading-assistant.deleteStrategy') }}
+                          </a-menu-item>
+                        </a-menu>
+                        <a-button type="link" icon="more" size="small" />
+                      </a-dropdown>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 未分组的策略列表 -->
+              <div
+                v-for="item in groupedStrategies.ungrouped"
+                :key="item.id"
                 :class="['strategy-list-item', { active: selectedStrategy && selectedStrategy.id === item.id }]"
                 @click="handleSelectStrategy(item)"
               >
-                <a-list-item-meta>
-                  <template slot="title">
-                    <div class="strategy-item-header">
-                      <div class="strategy-name-wrapper">
-                        <a-tag
-                          v-if="item.exchange_config && item.exchange_config.exchange_id"
-                          :color="getExchangeTagColor(item.exchange_config.exchange_id)"
-                          size="small"
-                          class="exchange-tag"
-                        >
-                          <a-icon type="bank" style="margin-right: 4px;" />
-                          {{ getExchangeDisplayName(item.exchange_config.exchange_id) }}
-                        </a-tag>
-                        <span class="strategy-name">{{ item.strategy_name }}</span>
-                        <a-tag
-                          v-if="item.strategy_type === 'PromptBasedStrategy'"
-                          color="purple"
-                          size="small"
-                          class="strategy-type-tag"
-                        >
-                          <a-icon type="robot" style="margin-right: 2px;" />
-                          AI
-                        </a-tag>
-                      </div>
-                    </div>
-                  </template>
-                  <template slot="description">
-                    <div class="strategy-item-info">
-                      <!-- <span class="info-item">
-                        <a-icon type="line-chart" />
-                        {{ getStrategyTypeText(item.strategy_type) }}
-                      </span> -->
-                      <span class="info-item" v-if="item.trading_config && item.trading_config.symbol">
-                        <a-icon type="dollar" />
-                        {{ item.trading_config.symbol }}
-                      </span>
-                      <span
-                        class="status-label"
-                        :class="[
-                          item.status ? `status-${item.status}` : '',
-                          { 'status-stopped': item.status === 'stopped' }
-                        ]"
+                <div class="strategy-item-content">
+                  <div class="strategy-item-header">
+                    <div class="strategy-name-wrapper">
+                      <a-tag
+                        v-if="item.exchange_config && item.exchange_config.exchange_id"
+                        :color="getExchangeTagColor(item.exchange_config.exchange_id)"
+                        size="small"
+                        class="exchange-tag"
                       >
-                        {{ getStatusText(item.status) }}
-                      </span>
+                        <a-icon type="bank" style="margin-right: 4px;" />
+                        {{ getExchangeDisplayName(item.exchange_config.exchange_id) }}
+                      </a-tag>
+                      <span class="strategy-name">{{ item.strategy_name }}</span>
+                      <a-tag
+                        v-if="item.strategy_type === 'PromptBasedStrategy'"
+                        color="purple"
+                        size="small"
+                        class="strategy-type-tag"
+                      >
+                        <a-icon type="robot" style="margin-right: 2px;" />
+                        AI
+                      </a-tag>
                     </div>
-                  </template>
-                </a-list-item-meta>
-                <template slot="actions">
-                  <a-dropdown
-                    :getPopupContainer="getDropdownContainer"
-                    :trigger="['click']">
+                  </div>
+                  <div class="strategy-item-info">
+                    <span class="info-item" v-if="item.trading_config && item.trading_config.symbol">
+                      <a-icon type="dollar" />
+                      {{ item.trading_config.symbol }}
+                    </span>
+                    <span
+                      class="status-label"
+                      :class="[
+                        item.status ? `status-${item.status}` : '',
+                        { 'status-stopped': item.status === 'stopped' }
+                      ]"
+                    >
+                      {{ getStatusText(item.status) }}
+                    </span>
+                  </div>
+                </div>
+                <div class="strategy-item-actions" @click.stop>
+                  <a-dropdown :getPopupContainer="getDropdownContainer" :trigger="['click']">
                     <a-menu slot="overlay" @click="({ key }) => handleMenuClick(key, item)">
                       <a-menu-item v-if="item.status === 'stopped'" key="start">
                         <a-icon type="play-circle" />
@@ -105,9 +189,9 @@
                     </a-menu>
                     <a-button type="link" icon="more" size="small" />
                   </a-dropdown>
-                </template>
-              </a-list-item>
-            </a-list>
+                </div>
+              </div>
+            </div>
           </a-spin>
         </a-card>
       </a-col>
@@ -312,8 +396,10 @@
                   />
                 </a-form-item>
 
-                <a-form-item :label="$t('trading-assistant.form.symbol')">
+                <a-form-item :label="isEditMode ? $t('trading-assistant.form.symbol') : $t('trading-assistant.form.symbols')">
+                  <!-- 编辑模式：单选 -->
                   <a-select
+                    v-if="isEditMode"
                     v-decorator="['symbol', { rules: [{ required: true, message: $t('trading-assistant.validation.symbolRequired') }] }]"
                     :placeholder="$t('trading-assistant.placeholders.selectSymbol')"
                     show-search
@@ -336,8 +422,35 @@
                       </div>
                     </a-select-option>
                   </a-select>
+                  <!-- 创建模式：多选 -->
+                  <a-select
+                    v-else
+                    v-model="selectedSymbols"
+                    mode="multiple"
+                    :placeholder="$t('trading-assistant.placeholders.selectSymbols')"
+                    show-search
+                    :filter-option="filterWatchlistOption"
+                    :loading="loadingWatchlist"
+                    @change="handleMultiSymbolChange"
+                    :getPopupContainer="(triggerNode) => triggerNode.parentNode"
+                    :maxTagCount="3"
+                  >
+                    <a-select-option
+                      v-for="item in watchlist"
+                      :key="`${item.market}:${item.symbol}`"
+                      :value="`${item.market}:${item.symbol}`"
+                    >
+                      <div class="symbol-option">
+                        <a-tag :color="getMarketColor(item.market)" style="margin-right: 8px; margin-bottom: 0;">
+                          {{ item.market }}
+                        </a-tag>
+                        <span class="symbol-name">{{ item.symbol }}</span>
+                        <span v-if="item.name" class="symbol-name-extra">{{ item.name }}</span>
+                      </div>
+                    </a-select-option>
+                  </a-select>
                   <div class="form-item-hint">
-                    {{ $t('trading-assistant.form.symbolHintCrypto') }}
+                    {{ isEditMode ? $t('trading-assistant.form.symbolHintCrypto') : $t('trading-assistant.form.symbolsHint') }}
                   </div>
                 </a-form-item>
 
@@ -991,7 +1104,7 @@
 </template>
 
 <script>
-import { getStrategyList, startStrategy, stopStrategy, deleteStrategy, createStrategy, updateStrategy, testExchangeConnection, getStrategyEquityCurve } from '@/api/strategy'
+import { getStrategyList, startStrategy, stopStrategy, deleteStrategy, updateStrategy, testExchangeConnection, getStrategyEquityCurve, batchCreateStrategies, batchStartStrategies, batchStopStrategies, batchDeleteStrategies } from '@/api/strategy'
 import { getWatchlist } from '@/api/market'
 import { listExchangeCredentials, getExchangeCredential, createExchangeCredential } from '@/api/credentials'
 import { baseMixin } from '@/store/app-mixin'
@@ -1086,6 +1199,44 @@ export default {
       // Always depend on selectedMarketCategory to make UI reactive.
       const cat = this.selectedMarketCategory || 'Crypto'
       return String(cat).toLowerCase() === 'crypto'
+    },
+    // 策略分组显示
+    groupedStrategies () {
+      const groups = {}
+      const ungrouped = []
+
+      for (const s of this.strategies) {
+        const groupId = s.strategy_group_id
+        if (groupId && groupId.trim()) {
+          if (!groups[groupId]) {
+            groups[groupId] = {
+              id: groupId,
+              baseName: s.group_base_name || s.strategy_name.split('-')[0],
+              strategies: [],
+              // 统计信息
+              runningCount: 0,
+              stoppedCount: 0
+            }
+          }
+          groups[groupId].strategies.push(s)
+          if (s.status === 'running') {
+            groups[groupId].runningCount++
+          } else {
+            groups[groupId].stoppedCount++
+          }
+        } else {
+          ungrouped.push(s)
+        }
+      }
+
+      // 转换为数组，按创建时间排序
+      const groupList = Object.values(groups).sort((a, b) => {
+        const aTime = Math.max(...a.strategies.map(s => s.created_at || 0))
+        const bTime = Math.max(...b.strategies.map(s => s.created_at || 0))
+        return bTime - aTime
+      })
+
+      return { groups: groupList, ungrouped }
     }
   },
   data () {
@@ -1129,7 +1280,11 @@ export default {
       loadingExchangeCredentials: false,
       exchangeCredentials: [],
       saveCredentialUi: false,
-      suppressApiClearOnce: false
+      suppressApiClearOnce: false,
+      // 多币种选择（创建模式）
+      selectedSymbols: [],
+      // 策略组折叠状态
+      collapsedGroups: {}
       // Market category is inferred from Step 1 watchlist symbol ("Market:SYMBOL").
     }
   },
@@ -1184,6 +1339,28 @@ export default {
       this.selectedMarketCategory = market || 'Crypto'
 
       // Non-crypto markets cannot use live trading. Force back to signal to keep UI consistent.
+      if (this.selectedMarketCategory !== 'Crypto') {
+        this.executionModeUi = 'signal'
+        try {
+          this.form && this.form.setFieldsValue && this.form.setFieldsValue({ execution_mode: 'signal' })
+        } catch (e) {}
+      }
+    },
+    handleMultiSymbolChange (vals) {
+      // vals: 数组，如 ["Crypto:BTC/USDT", "Crypto:ETH/USDT"]
+      this.selectedSymbols = vals || []
+
+      // 根据选中的币种更新市场类型
+      if (vals && vals.length > 0) {
+        const firstVal = vals[0]
+        if (typeof firstVal === 'string' && firstVal.includes(':')) {
+          const idx = firstVal.indexOf(':')
+          const market = firstVal.slice(0, idx)
+          this.selectedMarketCategory = market || 'Crypto'
+        }
+      }
+
+      // Non-crypto markets cannot use live trading
       if (this.selectedMarketCategory !== 'Crypto') {
         this.executionModeUi = 'signal'
         try {
@@ -1344,6 +1521,7 @@ export default {
       this.entryPctMaxUi = 100
       this.aiFilterEnabledUi = false
       this.selectedMarketCategory = 'Crypto'
+      this.selectedSymbols = [] // 重置多币种选择
 
       this.form.resetFields()
       this.form.setFieldsValue({
@@ -1680,6 +1858,83 @@ export default {
           this.handleDeleteStrategy(strategy)
           break
       }
+    },
+    toggleGroup (groupId) {
+      this.$set(this.collapsedGroups, groupId, !this.collapsedGroups[groupId])
+    },
+    async handleGroupMenuClick (key, group) {
+      const strategyIds = group.strategies.map(s => s.id)
+      switch (key) {
+        case 'startAll':
+          await this.handleBatchStartStrategies(strategyIds, group.baseName)
+          break
+        case 'stopAll':
+          await this.handleBatchStopStrategies(strategyIds, group.baseName)
+          break
+        case 'deleteAll':
+          await this.handleBatchDeleteStrategies(strategyIds, group.baseName)
+          break
+      }
+    },
+    async handleBatchStartStrategies (strategyIds, groupName) {
+      try {
+        const res = await batchStartStrategies({ strategy_ids: strategyIds })
+        if (res.code === 1) {
+          const count = res.data?.success_ids?.length || strategyIds.length
+          this.$message.success(this.$t('trading-assistant.messages.batchStartSuccess', { count }))
+          this.loadStrategies()
+        } else {
+          this.$message.error(res.msg || this.$t('trading-assistant.messages.batchStartFailed'))
+        }
+      } catch (error) {
+        this.$message.error(this.$t('trading-assistant.messages.batchStartFailed'))
+      }
+    },
+    async handleBatchStopStrategies (strategyIds, groupName) {
+      try {
+        const res = await batchStopStrategies({ strategy_ids: strategyIds })
+        if (res.code === 1) {
+          const count = res.data?.success_ids?.length || strategyIds.length
+          this.$message.success(this.$t('trading-assistant.messages.batchStopSuccess', { count }))
+          this.loadStrategies()
+        } else {
+          this.$message.error(res.msg || this.$t('trading-assistant.messages.batchStopFailed'))
+        }
+      } catch (error) {
+        this.$message.error(this.$t('trading-assistant.messages.batchStopFailed'))
+      }
+    },
+    async handleBatchDeleteStrategies (strategyIds, groupName) {
+      const confirmText = this.$t('trading-assistant.messages.batchDeleteConfirm', {
+        count: strategyIds.length,
+        name: groupName
+      })
+      this.$confirm({
+        title: this.$t('trading-assistant.deleteAll'),
+        content: confirmText,
+        okText: this.$t('trading-assistant.deleteAll'),
+        okType: 'danger',
+        cancelText: this.$t('trading-assistant.form.cancel'),
+        onOk: async () => {
+          try {
+            const res = await batchDeleteStrategies({ strategy_ids: strategyIds })
+            if (res.code === 1) {
+              const count = res.data?.success_ids?.length || strategyIds.length
+              this.$message.success(this.$t('trading-assistant.messages.batchDeleteSuccess', { count }))
+              // 如果删除的策略包含当前选中的策略，清空选中状态
+              if (this.selectedStrategy && strategyIds.includes(this.selectedStrategy.id)) {
+                this.selectedStrategy = null
+                this.stopEquityPolling()
+              }
+              this.loadStrategies()
+            } else {
+              this.$message.error(res.msg || this.$t('trading-assistant.messages.batchDeleteFailed'))
+            }
+          } catch (error) {
+            this.$message.error(this.$t('trading-assistant.messages.batchDeleteFailed'))
+          }
+        }
+      })
     },
     async handleStartStrategy (id) {
       try {
@@ -2165,18 +2420,31 @@ export default {
     handleNext () {
       if (this.currentStep === 0) {
         // Step 1: basic config (strategy name/symbol/capital/leverage/market type/timeframe)
+        // 编辑模式验证 symbol，创建模式验证 selectedSymbols（多选）
         const fieldsToValidate = [
           'indicator_id',
           'strategy_name',
-          'symbol',
           'initial_capital',
           'market_type',
           'leverage',
           'trade_direction',
           'timeframe'
         ]
+        // 编辑模式需要验证 symbol 字段
+        if (this.isEditMode) {
+          fieldsToValidate.push('symbol')
+        }
         this.form.validateFields(fieldsToValidate, (err, values) => {
           if (err) return
+
+          // 创建模式：验证多币种选择
+          if (!this.isEditMode) {
+            if (!this.selectedSymbols || this.selectedSymbols.length === 0) {
+              this.$message.warning(this.$t('trading-assistant.validation.symbolsRequired'))
+              return
+            }
+          }
+
           // Enforce spot limitations
           try {
             const marketType = (values && values.market_type) || this.form.getFieldValue('market_type')
@@ -2278,18 +2546,10 @@ export default {
               if (leverage > 125) leverage = 125
             }
 
-            // Watchlist-style symbol value: "Market:SYMBOL"
-            let parsedMarketCategory = (values.market_category || this.selectedMarketCategory || 'Crypto')
-            let parsedSymbol = values.symbol
-            if (typeof parsedSymbol === 'string' && parsedSymbol.includes(':')) {
-              const idx = parsedSymbol.indexOf(':')
-              parsedMarketCategory = parsedSymbol.slice(0, idx) || parsedMarketCategory
-              parsedSymbol = parsedSymbol.slice(idx + 1)
-            }
-
-            const payload = {
+            // 构建基础 payload
+            const basePayload = {
               strategy_name: values.strategy_name,
-              market_category: parsedMarketCategory,
+              market_category: this.selectedMarketCategory || 'Crypto',
               execution_mode: values.execution_mode || 'signal',
               notification_config: notificationConfig,
               indicator_config: {
@@ -2305,7 +2565,6 @@ export default {
                 passphrase: this.needsPassphrase ? values.passphrase : undefined
               } : undefined,
               trading_config: {
-                symbol: parsedSymbol,
                 initial_capital: values.initial_capital,
                 leverage: leverage,
                 trade_direction: tradeDirection,
@@ -2347,15 +2606,31 @@ export default {
 
             let res
             if (this.editingStrategy) {
-              res = await updateStrategy(this.editingStrategy.id, payload)
+              // 编辑模式：更新单个策略
+              let parsedSymbol = values.symbol
+              if (typeof parsedSymbol === 'string' && parsedSymbol.includes(':')) {
+                const idx = parsedSymbol.indexOf(':')
+                basePayload.market_category = parsedSymbol.slice(0, idx) || basePayload.market_category
+                parsedSymbol = parsedSymbol.slice(idx + 1)
+              }
+              basePayload.trading_config.symbol = parsedSymbol
+              res = await updateStrategy(this.editingStrategy.id, basePayload)
             } else {
-              payload.user_id = 1
-              payload.strategy_type = 'IndicatorStrategy'
-              res = await createStrategy(payload)
+              // 创建模式：批量创建策略
+              basePayload.user_id = 1
+              basePayload.strategy_type = 'IndicatorStrategy'
+              basePayload.symbols = this.selectedSymbols // 多币种数组
+
+              res = await batchCreateStrategies(basePayload)
             }
 
             if (res.code === 1) {
-              this.$message.success(this.isEditMode ? this.$t('trading-assistant.messages.updateSuccess') : this.$t('trading-assistant.messages.createSuccess'))
+              if (this.isEditMode) {
+                this.$message.success(this.$t('trading-assistant.messages.updateSuccess'))
+              } else {
+                const totalCreated = res.data?.total_created || this.selectedSymbols.length
+                this.$message.success(this.$t('trading-assistant.messages.batchCreateSuccess', { count: totalCreated }))
+              }
               if (isLive && values.save_credential) {
                 // Save credential to vault (best-effort)
                 try {
@@ -2804,6 +3079,121 @@ export default {
       /deep/ .ant-card-head {
         background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
         border-bottom: 1px solid #f0f0f0;
+      }
+
+      // 策略分组列表
+      .strategy-grouped-list {
+        .strategy-group {
+          margin-bottom: 12px;
+          background: #fff;
+          border-radius: @border-radius-md;
+          border: 1px solid #e8ecf1;
+          overflow: hidden;
+
+          .strategy-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            cursor: pointer;
+            transition: all 0.2s ease;
+
+            &:hover {
+              background: linear-gradient(135deg, #e8f4fd 0%, #e3f0fc 100%);
+            }
+
+            .group-header-left {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              flex: 1;
+              min-width: 0;
+
+              .collapse-icon {
+                font-size: 12px;
+                color: #8c8c8c;
+                transition: transform 0.2s ease;
+              }
+
+              .group-icon {
+                font-size: 16px;
+                color: @primary-color;
+              }
+
+              .group-name {
+                font-weight: 600;
+                font-size: 14px;
+                color: #1e3a5f;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+            }
+
+            .group-header-right {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+
+              .group-status {
+                font-size: 11px;
+                padding: 2px 8px;
+                border-radius: 10px;
+
+                &.running {
+                  background: rgba(14, 203, 129, 0.1);
+                  color: @success-color;
+                }
+
+                &.stopped {
+                  background: rgba(246, 70, 93, 0.1);
+                  color: @danger-color;
+                }
+              }
+            }
+          }
+
+          .strategy-group-content {
+            padding: 4px 8px 8px;
+
+            .strategy-list-item {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 8px 10px;
+              margin-bottom: 4px;
+              margin-left: 20px;
+              border-left: 2px solid #e8ecf1;
+              background: #fafbfc;
+              border-radius: 0 @border-radius-sm @border-radius-sm 0;
+
+              &:last-child {
+                margin-bottom: 0;
+              }
+
+              &:hover {
+                background: #f0f7ff;
+                border-left-color: @primary-color;
+              }
+
+              &.active {
+                background: #e6f4ff;
+                border-left-color: @primary-color;
+                border-left-width: 3px;
+              }
+
+              .strategy-item-content {
+                flex: 1;
+                min-width: 0;
+              }
+
+              .strategy-item-actions {
+                flex-shrink: 0;
+              }
+            }
+          }
+        }
       }
 
       .strategy-list-item {
