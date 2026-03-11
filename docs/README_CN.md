@@ -71,11 +71,24 @@ cd QuantDinger
 # 2. 配置（编辑管理员密码和AI API密钥）
 cp backend_api_python/env.example backend_api_python/.env
 
-# 3. 启动！
+# 3. 重要：生成并设置安全的 SECRET_KEY
+# Linux/Mac:
+python3 -c "import secrets; print(secrets.token_hex(32))" | xargs -I {} sed -i 's|SECRET_KEY=.*|SECRET_KEY={}|' backend_api_python/.env
+
+# 或手动编辑 backend_api_python/.env 并替换 SECRET_KEY 值
+# Windows PowerShell:
+# $key = python -c "import secrets; print(secrets.token_hex(32))"
+# (Get-Content backend_api_python\.env) -replace 'SECRET_KEY=.*', "SECRET_KEY=$key" | Set-Content backend_api_python\.env
+
+# 4. 启动！
 docker-compose up -d --build
 ```
 
-> **Windows PowerShell**: 使用 `Copy-Item backend_api_python\env.example -Destination backend_api_python\.env`
+> **Windows PowerShell**: 
+> - 复制：`Copy-Item backend_api_python\env.example -Destination backend_api_python\.env`
+> - 生成 SECRET_KEY：`python -c "import secrets; print(secrets.token_hex(32))"` 然后手动编辑 `.env`
+
+> **⚠️ 安全提示**：如果 `SECRET_KEY` 使用默认值，容器将**不会启动**。这可以防止不安全的部署。
 
 🎉 **完成！** 打开 **http://localhost:8888** | 登录：`quantdinger` / `123456`
 
@@ -86,7 +99,7 @@ docker-compose up -d --build
 # 必需 — 生产环境请修改！
 ADMIN_USER=quantdinger
 ADMIN_PASSWORD=your_secure_password
-SECRET_KEY=your_random_secret_key
+SECRET_KEY=your_random_secret_key  # ⚠️ 必须修改！生成方式：python3 -c "import secrets; print(secrets.token_hex(32))"
 
 # 可选 — 启用AI功能（选择一个）
 OPENROUTER_API_KEY=your_key        # 推荐：100+模型
@@ -94,6 +107,27 @@ OPENAI_API_KEY=your_key            # GPT-4o
 DEEPSEEK_API_KEY=your_key          # 性价比高
 GOOGLE_GEMINI_API_KEY=your_key     # Gemini
 ```
+
+</details>
+
+<details>
+<summary><b>🔐 生成 SECRET_KEY（Docker部署必需）</b></summary>
+
+**在启动Docker之前，您必须设置一个安全的 SECRET_KEY：**
+
+```bash
+# 方式1：使用辅助脚本（Linux/Mac）
+./scripts/generate-secret-key.sh
+
+# 方式2：使用辅助脚本（Windows PowerShell）
+.\scripts\generate-secret-key.ps1
+
+# 方式3：手动生成
+python3 -c "import secrets; print(secrets.token_hex(32))"
+# 然后编辑 backend_api_python/.env 并替换 SECRET_KEY 值
+```
+
+**⚠️ 如果 SECRET_KEY 使用默认值，容器将不会启动！**
 
 </details>
 
